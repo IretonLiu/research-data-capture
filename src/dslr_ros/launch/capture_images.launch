@@ -1,8 +1,5 @@
 <launch>
 
-    <param name="session_name" value="test_session"/>
-    <node pkg="dslr_ros" name="capture_images" type="capture_images.py"/>
-    <include file="$(find velodyne_pointcloud)/launch/VLP16_points.launch"/>
-    <node pkg="tf" name="ptcld_to_map" type="static_transform_publisher" args="0 0 0 0 0 0 1 map velodyne 10"/>
-
+<param name="session_name" value="TROUBLESHOOT"/>
+<node pkg="dslr_ros" name="capture_images" type="capture_images.py" output="screen"/>
 </launch>

@@ -100,6 +100,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN pip install gphoto2
 
+RUN echo "export ROS_MASTER_URI=http://localhost:11311" >> /root/.bashrc
+RUN echo "export ROS_HOSTNAME=localhost" >> /root/.bashrc
 
+# copy source code
+COPY ./src/ ./src
 
+RUN apt-get update && rosdep install --from-paths src/usb_cam src/dslr_ros src/velodyne -y
 
