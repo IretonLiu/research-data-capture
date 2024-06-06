@@ -29,49 +29,109 @@ import rospy
 from std_msgs.msg import String
 
 
+def set_capture_target(camera, value):
+    # get configuration tree
+    config = gp.check_result(gp.gp_camera_get_config(camera))
+    # find the capture target config item
+    capture_target = gp.check_result(
+        gp.gp_widget_get_child_by_name(config, "capturetarget")
+    )
+    # set value
+    value = gp.check_result(gp.gp_widget_get_choice(capture_target, value))
+    gp.check_result(gp.gp_widget_set_value(capture_target, value))
+    # set config
+    gp.check_result(gp.gp_camera_set_config(camera, config))
+    return 0
+
+
+def list_files(camera, path="/"):
+    result = []
+    # get files
+    for name, value in camera.folder_list_files(path):
+        result.append(os.path.join(path, name))
+    # read folders
+    folders = []
+    for name, value in camera.folder_list_folders(path):
+        folders.append(name)
+    # recurse over subfolders
+    for name in folders:
+        result.extend(list_files(camera, os.path.join(path, name)))
+    return result
+
+
 def talker():
-    rospy.init_node("cpature_images", anonymous=True)
+    rospy.init_node("capture_images", anonymous=True)
 
     pub = rospy.Publisher("/dslr/capture_msg", String, queue_size=10)
-    rate = rospy.Rate(10)  # 10hz
     session_name = rospy.get_param("session_name")
 
-    save_to_folder = "/root/ros_ws/data"  # "/media/ireton/SR20
     final_path = f"/root/ros_ws/data/{session_name}/"
     if not os.path.exists(final_path):
         os.makedirs(final_path)
 
-    while not rospy.is_shutdown():
-        callback_obj = gp.check_result(gp.use_python_logging())
-        camera = gp.Camera()
-        camera.init()
+    camera = gp.Camera()
+    camera.init()
+    #    set_capture_target(camera, 1)
+    event_texts = {
+        gp.GP_EVENT_CAPTURE_COMPLETE: "Capture Complete",
+        gp.GP_EVENT_FILE_ADDED: "File Added",
+        gp.GP_EVENT_FOLDER_ADDED: "Folder Added",
+        gp.GP_EVENT_TIMEOUT: "Timeout",
+    }
 
-        print("Capturing image")
-        file_path = camera.capture(
-            gp.GP_CAPTURE_IMAGE,
-        )
-        print(file_path.name)
+    def event_text(event_type):
+        if event_type in event_texts:
+            return event_texts[event_type]
+        return "Unknown Event"
+
+    while not rospy.is_shutdown():
+        rospy.loginfo("Capturing image")
+        try:
+            file_path = camera.capture(
+                gp.GP_CAPTURE_IMAGE,
+            )
+        except gp.GPhoto2Error as ex:
+            print("Error capturing image")
+            for e in ex.args:
+                print(e)
+
         print("Camera file path: {0}/{1}".format(file_path.folder, file_path.name))
 
-        save_dest = os.path.join("/root/ros_ws/data", file_path.name)
-        print("Copying image to", save_dest)
-
+        # save file
         save_file = camera.file_get(
             file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL
         )
+        save_dest = os.path.join(final_path, file_path.name)
+        print("Copying image to " + save_dest)
         save_file.save(save_dest)
 
-        save_new_name = final_path + time.strftime("%Y%m%d%H%M%S.jpg", time.gmtime())
+        save_new_name = final_path + time.strftime("%Y%m%d%H%M%S.RAF", time.gmtime())
         os.rename(save_dest, save_new_name)
-
         pub.publish("Image Captured: " + save_new_name)
-        rospy.sleep(5)
+
+        # empty the event queue
+        # typ, data = camera.wait_for_event(200)
+        # while typ != gp.GP_EVENT_TIMEOUT:
+        #     print("Event: %s, data: %s" % (event_text(typ), data))
+
+        #     if typ == gp.GP_EVENT_FILE_ADDED:
+        #         fn = os.path.join(data.folder, data.name)
+        #         print("New file: %s" % fn)
+        #         # self.download_file(fn)
+
+        #     # try to grab another event
+        #     typ, data = camera.wait_for_event(1)
+
+        camera.folder_delete_all(file_path.folder)
+        rospy.sleep(3)
+
 
 
 def main():
     logging.basicConfig(
         format="%(levelname)s: %(name)s: %(message)s", level=logging.WARNING
     )
+    callback_obj = gp.check_result(gp.use_python_logging())
     try:
         talker()
     except rospy.ROSInterruptException:

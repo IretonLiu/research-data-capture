@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-noetic-perception-pcl \
     ros-noetic-pcl-msgs \
     ros-noetic-vision-opencv \
-    && rm -rf /var/lib/apt/lists/*
+    ros-noetic-husky-desktop
 
 
 ENV HOME /root
@@ -41,19 +41,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     python-is-python3 \
     software-properties-common \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
+    wget
 
 # install dependencies
 RUN add-apt-repository ppa:borglab/gtsam-release-4.0 \
     && apt-get update \
     && apt install -y libgtsam-dev libgtsam-unstable-dev \
-    libpcap-dev \
-    && rm -rf /var/lib/apt/lists/*
+    libpcap-dev
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    "ros-noetic-ecl*" \
-    && rm -rf /var/lib/apt/lists/*
+    "ros-noetic-ecl*"
 
 RUN pip install pypcd open3d
 
@@ -71,12 +68,10 @@ RUN cd && source /opt/ros/noetic/setup.bash \
 # ADD ./src/ ./src
 
 # quality of life packages
-RUN apt-get update && apt-get install -y tmux vim \
-    && rm -rf /var/lin/apt/lists/*
+RUN apt-get update && apt-get install -y tmux vim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ros-noetic-eigen-conversions \
-    && rm -rf /var/lib/apt/lists/*
+    ros-noetic-eigen-conversions
 
 RUN cd && echo "source /opt/ros/noetic/setup.bash" > /root/.bashrc
 
@@ -87,19 +82,23 @@ RUN echo "set -g mouse on" > /root/.tmux.conf
 
 # install ros velodyne driver
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ros-noetic-roslint \
-    && rm -rf /var/lib/apt/lists/*
+    ros-noetic-roslint
 
 # install opencv
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libopencv-dev \
     python3-opencv \
     libgphoto2-dev \
-    gphoto2 \
-    && rm -rf /var/lib/apt/lists/*
+    gphoto2
 
 RUN pip install gphoto2
 
+COPY ./src/ ./src
+RUN apt-get update && rosdep install --from-paths src/dslr_ros src/velodyne src/usb_cam --ignore-src -r -y \
+    && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && apt install -y net-tools iputils-ping
+
+RUN apt-get update && apt-get install -y --no-install-recommends ros-noetic-husky-simulator
 
 
