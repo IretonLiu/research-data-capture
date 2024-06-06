@@ -5,11 +5,12 @@ services:
     image: velodyne
     command: /bin/bash
     volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - /dev:/dev
       - /dev/bus/usb:/dev/bus/usb
       - /home/ireton/Projects/Masters/ros_ws:/root/ros_ws
-      - /media/ireton/SR19/:/root/ros_ws/data
+      # - /media/ireton/SR20/:/root/ros_ws/data
+      - $HOME/.Xauthority:/root/.Xauthority:ro
     stdin_open: true
     tty: true
     environment:
@@ -19,6 +20,10 @@ services:
       - ROS_IP=127.0.0.1
     network_mode: host
     privileged: true
+    ulimits:
+      nofile:
+        soft: "1024"
+        hard: "524288"
     deploy:
       resources:
         reservations:
